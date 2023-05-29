@@ -6,6 +6,165 @@ class MyCustomClimate : public PollingComponent, public Climate, public UARTDevi
   MyCustomClimate(UARTComponent *parent) : UARTDevice(parent) {}
   MyCustomClimate() : PollingComponent() {}
 
+  uint8_t set_cmd_base[] = {0xBB, 0x00, 0x01, 0x03, 0x1D, 0x00, 0x00, 0x64, 0x03, 0xF3, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+  union {
+    struct {
+      uint8_t header;
+      uint8_t byte_1;
+      uint8_t byte_2;
+      uint8_t type;
+      uint8_t len;
+      uint8_t byte_5;
+      uint8_t byte_6;
+      
+      uint8_t mode : 4;
+      uint8_t power : 1;
+      uint8_t disp : 1;
+      uint8_t eco : 1;
+      uint8_t turbo : 1;
+
+      uint8_t temp : 4;
+      uint8_t fan : 3;
+      uint8_t byte_8_bit_7 : 1;
+
+      uint8_t byte_9;
+
+      uint8_t byte_10_bit_0_4 : 5;
+      uint8_t hswing : 1;
+      uint8_t vswing : 1;
+      uint8_t byte_10_bit_7 : 1;
+
+      uint8_t byte_11;
+      uint8_t byte_12;
+      uint8_t byte_13;
+      uint8_t byte_14;
+      uint8_t byte_15;
+      uint8_t byte_16;
+      uint8_t byte_17;
+      uint8_t byte_18;
+      uint8_t byte_19;
+
+      uint8_t byte_20;
+      uint8_t byte_21;
+      uint8_t byte_22;
+      uint8_t byte_23;
+      uint8_t byte_24;
+      uint8_t byte_25;
+      uint8_t byte_26;
+      uint8_t byte_27;
+      uint8_t byte_28;
+      uint8_t byte_29;
+
+      uint8_t byte_30;
+      uint8_t byte_31;
+      uint8_t byte_32;
+      
+      uint8_t byte_33_bit_0_6 : 7;
+      uint8_t mute : 1;
+
+      uint8_t byte_34;
+      uint8_t byte_35;
+      uint8_t byte_36;
+      uint8_t byte_37;
+      uint8_t byte_38;
+      uint8_t byte_39;
+
+      uint8_t byte_40;
+      uint8_t byte_41;
+      uint8_t byte_42;
+      uint8_t byte_43;
+      uint8_t byte_44;
+      uint8_t byte_45;
+      uint8_t byte_46;
+      uint8_t byte_47;
+      uint8_t byte_48;
+      uint8_t byte_49;
+
+      uint8_t byte_50;
+      uint8_t byte_51;
+      uint8_t byte_52;
+      uint8_t byte_53;
+      uint8_t byte_54;
+      uint8_t byte_55;
+      uint8_t byte_56;
+      uint8_t byte_57;
+      uint8_t byte_58;
+      uint8_t byte_59;
+
+      uint8_t xor_sum;
+    } data;
+    uint8_t raw[61];
+  } get_cmd_resp;
+
+  union {
+    struct {
+      uint8_t header;
+      uint8_t byte_1;
+      uint8_t byte_2;
+      uint8_t type;
+      uint8_t len;
+      uint8_t byte_5;
+      uint8_t byte_6;
+      
+      uint8_t byte_7_bit_0_1 : 2;
+      uint8_t power : 1;
+      uint8_t off_timer_en : 1;
+      uint8_t on_timer_en : 1;
+      uint8_t beep : 1;
+      uint8_t disp : 1;
+      uint8_t eco : 1;
+
+      uint8_t mode : 4;
+      uint8_t byte_8_bit_4_5 : 2;
+      uint8_t turbo : 1;
+      uint8_t mute : 1;
+
+      uint8_t temp : 4;
+      uint8_t byte_9_bit_4_7 : 4;
+
+      uint8_t fan : 3;
+      uint8_t vswing : 3;
+      uint8_t byte_10_bit_6 : 1;
+      uint8_t byte_10_bit_7 : 1;
+
+      uint8_t byte_11;
+      uint8_t byte_12;
+      uint8_t byte_13;
+
+      uint8_t byte_14_bit_0_2 : 3;
+      uint8_t hswing : 1;
+      uint8_t byte_14_bit_4 : 1;
+      uint8_t half_degree : 1;
+      uint8_t byte_14_bit_6_7 : 2;
+
+      uint8_t byte_15;
+      uint8_t byte_16;
+      uint8_t byte_17;
+      uint8_t byte_18;
+      uint8_t byte_19;
+
+      uint8_t byte_20;
+      uint8_t byte_21;
+      uint8_t byte_22;
+      uint8_t byte_23;
+      uint8_t byte_24;
+      uint8_t byte_25;
+      uint8_t byte_26;
+      uint8_t byte_27;
+      uint8_t byte_28;
+      uint8_t byte_29;
+
+      uint8_t byte_30;
+      uint8_t byte_31;
+      uint8_t byte_32;
+      uint8_t byte_33;
+
+      uint8_t xor_sum;
+    } data;
+    uint8_t raw[35];
+  } set_cmd;
+
   uint8_t turbo;
   uint8_t eco;
   uint8_t disp;
@@ -188,50 +347,39 @@ class MyCustomClimate : public PollingComponent, public Climate, public UARTDevi
     
     while (available()) {
       int len = read_data_line(read(), buffer, max_line_length);
-      if(len > 0) {
+      if(len == sizeof(get_cmd_resp) && buffer[3] == 0x04) {
+        memcpy(get_cmd_resp.raw, buffer, len);
         print_hex_str(buffer, len);
         if (is_valid_xor(buffer, len)) {
-
-          turbo = buffer[7] & 0x80;
-          eco = buffer[7] &  0x40;
-          disp = buffer[7] & 0x20;
-          power = buffer[7] & 0x10;
-          ac_mode = buffer[7] & 0x0F;
-          temp = (buffer[8] & 0x07) + 16;
-          fan = buffer[8] & 0x070;
-          h_swing = buffer[10] & 0x20;
-          v_swing = buffer[10] & 0x40;
-          sleep = buffer[19] & 0x01;
-          mute = buffer[33] & 0x80;
-
           float curr_temp = (((buffer[17] << 8) | buffer[18]) / 374 - 32) / 1.8;
 
-          if (power == 0x00) this->mode = climate::CLIMATE_MODE_OFF;
-          else if (ac_mode == 0x01) this->mode = climate::CLIMATE_MODE_COOL;
-          else if (ac_mode == 0x03) this->mode = climate::CLIMATE_MODE_DRY;
-          else if (ac_mode == 0x02) this->mode = climate::CLIMATE_MODE_FAN_ONLY;
-          else if (ac_mode == 0x04) this->mode = climate::CLIMATE_MODE_HEAT;
-          else if (ac_mode == 0x05) this->mode = climate::CLIMATE_MODE_AUTO;
+          if (get_cmd_resp.data.power == 0x00) this->mode = climate::CLIMATE_MODE_OFF;
+          else if (get_cmd_resp.data.mode == 0x01) this->mode = climate::CLIMATE_MODE_COOL;
+          else if (get_cmd_resp.data.mode == 0x03) this->mode = climate::CLIMATE_MODE_DRY;
+          else if (get_cmd_resp.data.mode == 0x02) this->mode = climate::CLIMATE_MODE_FAN_ONLY;
+          else if (get_cmd_resp.data.mode == 0x04) this->mode = climate::CLIMATE_MODE_HEAT;
+          else if (get_cmd_resp.data.mode == 0x05) this->mode = climate::CLIMATE_MODE_AUTO;
 
 
-          if (turbo == 0x80) this->custom_fan_mode = esphome::to_string("Turbo");
-          else if (mute == 0x80) this->custom_fan_mode = esphome::to_string("Mute");
-          else if (fan == 0x00) this->custom_fan_mode = esphome::to_string("Auto");
-          else if (fan == 0x10) this->custom_fan_mode = esphome::to_string("Low");
-          else if (fan == 0x40) this->custom_fan_mode = esphome::to_string("Low - Medium");
-          else if (fan == 0x20) this->custom_fan_mode = esphome::to_string("Medium");
-          else if (fan == 0x50) this->custom_fan_mode = esphome::to_string("Medium - High");
-          else if (fan == 0x30) this->custom_fan_mode = esphome::to_string("High");
+          if (get_cmd_resp.data.turbo) this->custom_fan_mode = esphome::to_string("Turbo");
+          else if (get_cmd_resp.data.mute) this->custom_fan_mode = esphome::to_string("Mute");
+          else if (get_cmd_resp.data.fan == 0x00) this->custom_fan_mode = esphome::to_string("Auto");
+          else if (get_cmd_resp.data.fan == 0x01) this->custom_fan_mode = esphome::to_string("Low");
+          else if (get_cmd_resp.data.fan == 0x04) this->custom_fan_mode = esphome::to_string("Low - Medium");
+          else if (get_cmd_resp.data.fan == 0x02) this->custom_fan_mode = esphome::to_string("Medium");
+          else if (get_cmd_resp.data.fan == 0x05) this->custom_fan_mode = esphome::to_string("Medium - High");
+          else if (get_cmd_resp.data.fan == 0x03) this->custom_fan_mode = esphome::to_string("High");
 
 
-          if (h_swing == 0x20 && v_swing == 0x40) this->swing_mode = climate::CLIMATE_SWING_BOTH;
-          else if (h_swing == 0x00 && v_swing == 0x00) this->swing_mode = climate::CLIMATE_SWING_OFF;
-          else if (v_swing == 0x40) this->swing_mode = climate::CLIMATE_SWING_VERTICAL;
-          else if (h_swing == 0x20) this->swing_mode = climate::CLIMATE_SWING_HORIZONTAL;
+          if (get_cmd_resp.data.hswing && get_cmd_resp.data.vswing) this->swing_mode = climate::CLIMATE_SWING_BOTH;
+          else if (!get_cmd_resp.data.hswing && !get_cmd_resp.data.vswing) this->swing_mode = climate::CLIMATE_SWING_OFF;
+          else if (get_cmd_resp.data.vswing) this->swing_mode = climate::CLIMATE_SWING_VERTICAL;
+          else if (get_cmd_resp.data.hswing) this->swing_mode = climate::CLIMATE_SWING_HORIZONTAL;
 
 
-          ESP_LOGI("TCL", "fan %02X", fan);
-          this->target_temperature = float(temp);
+          ESP_LOGI("TCL", "fan %02X", get_cmd_resp.data.fan);
+          ESP_LOGI("TCL", "mode %02X", get_cmd_resp.data.mode);
+          this->target_temperature = float(get_cmd_resp.data.temp + 16);
           this->current_temperature = curr_temp;
           this->publish_state();
         }
