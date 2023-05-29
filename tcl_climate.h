@@ -199,7 +199,7 @@ class MyCustomClimate : public PollingComponent, public Climate, public UARTDevi
 
     m_set_cmd.data.turbo = get_cmd_resp->data.turbo;
     m_set_cmd.data.mute = get_cmd_resp->data.mute;
-    m_set_cmd.data.temp = get_cmd_resp->data.temp;
+    m_set_cmd.data.temp = 15 - get_cmd_resp->data.temp;
 
     switch (get_cmd_resp->data.fan) {
       case 0x00:
@@ -281,7 +281,7 @@ class MyCustomClimate : public PollingComponent, public Climate, public UARTDevi
       get_cmd_resp_t get_cmd_resp = {0};
       memcpy(get_cmd_resp.raw, m_get_cmd_resp.raw, sizeof(get_cmd_resp.raw));
 
-      get_cmd_resp.data.temp = 31 - uint8_t(temp);
+      get_cmd_resp.data.temp = uint8_t(temp) - 16;
 
       build_set_cmd(&get_cmd_resp);
       ready_to_send_set_cmd_flag = true;
