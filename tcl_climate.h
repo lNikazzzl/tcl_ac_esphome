@@ -1,7 +1,7 @@
 #include "esphome.h"
 
 class MyCustomClimate : public PollingComponent, public Climate, public UARTDevice {
- public:
+public:
 
   MyCustomClimate(UARTComponent *parent) : UARTDevice(parent) {}
   MyCustomClimate() : PollingComponent() {}
@@ -126,13 +126,16 @@ class MyCustomClimate : public PollingComponent, public Climate, public UARTDevi
       uint8_t byte_10_bit_6 : 1;
       uint8_t byte_10_bit_7 : 1;
 
-      uint8_t byte_11;
+      uint8_t byte_11_bit_0_2 : 3;
+      uint8_t hswing : 1;
+      uint8_t byte_11_bit_4_7 : 4;
+
       uint8_t byte_12;
       uint8_t byte_13;
 
       uint8_t byte_14_bit_0_2 : 3;
-      uint8_t hswing : 1;
-      uint8_t byte_14_bit_4 : 1;
+      uint8_t byte_14_bit_3 : 1;
+      uint8_t byte_14_bit_4 : 1;//uint8_t hswing : 1;
       uint8_t half_degree : 1;
       uint8_t byte_14_bit_6_7 : 2;
 
@@ -286,7 +289,7 @@ class MyCustomClimate : public PollingComponent, public Climate, public UARTDevi
       build_set_cmd(&get_cmd_resp);
       ready_to_send_set_cmd_flag = true;
     }
-    /*if (call.get_swing_mode().has_value()) {
+    if (call.get_swing_mode().has_value()) {
       // User requested target temperature change
       ClimateSwingMode swing_mode = *call.get_swing_mode();
 
@@ -315,7 +318,7 @@ class MyCustomClimate : public PollingComponent, public Climate, public UARTDevi
       build_set_cmd(&get_cmd_resp);
       ready_to_send_set_cmd_flag = true;
      
-    }*/
+    }
     if (call.get_custom_fan_mode().has_value()) {
       ESP_LOGI("ads", "ajskndjanjanwnjwa");
       // User requested target temperature change
