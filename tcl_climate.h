@@ -5,6 +5,7 @@ public:
 
   MyCustomClimate(UARTComponent *parent) : UARTDevice(parent) {}
   MyCustomClimate() : PollingComponent() {}
+  bool is_changed : 1;
 
   union get_cmd_resp_t{
     struct {
@@ -172,6 +173,36 @@ public:
   get_cmd_resp_t m_get_cmd_resp = {0};
   set_cmd_t m_set_cmd = {0};
 
+  void set_current_temperature (float current_temperature) {
+    if (this->current_temperature == current_temperature) return;
+    this->is_changed = true;
+    this->current_temperature = current_temperature;
+  }
+
+  void set_custom_fan_mode  (const std::string &fan_mode) {
+    if (this->custom_fan_mode == fan_mode) return;
+    this->is_changed = true;
+    this->custom_fan_mode = fan_mode;
+  }
+
+  void set_mode  (esphome::climate::ClimateMode mode) {
+    if (this->mode == mode) return;
+    this->is_changed = true;
+    this->mode = mode;
+  }
+
+  void set_swing_mode (esphome::climate::ClimateSwingMode swing_mode) {
+    if (this->swing_mode == swing_mode) return;
+    this->is_changed = true;
+    this->swing_mode = swing_mode;
+  }
+
+  void set_target_temperature (float target_temperature) {
+    if (this->target_temperature == target_temperature) return;
+    this->is_changed = true;
+    this->target_temperature = target_temperature;
+  }
+
   void build_set_cmd(get_cmd_resp_t * get_cmd_resp) {
     memcpy(m_set_cmd.raw, set_cmd_base, sizeof(m_set_cmd.raw));
 
@@ -262,10 +293,14 @@ public:
             get_cmd_resp.data.mode = 0x02;
             break;
           case climate::CLIMATE_MODE_HEAT:
+          case climate::CLIMATE_MODE_HEAT_COOL:
             get_cmd_resp.data.mode = 0x04;
             break;
           case climate::CLIMATE_MODE_AUTO:
             get_cmd_resp.data.mode = 0x05;
+            break;
+          case CLIMATE_MODE_OFF:
+            get_cmd_resp.data.power = 0x00;
             break;
         }
       }
@@ -436,36 +471,38 @@ public:
         print_hex_str(buffer, len);
         if (is_valid_xor(buffer, len)) {
           float curr_temp = (((buffer[17] << 8) | buffer[18]) / 374 - 32) / 1.8;
+          this->is_changed = false;
 
-          if (m_get_cmd_resp.data.power == 0x00) this->mode = climate::CLIMATE_MODE_OFF;
-          else if (m_get_cmd_resp.data.mode == 0x01) this->mode = climate::CLIMATE_MODE_COOL;
-          else if (m_get_cmd_resp.data.mode == 0x03) this->mode = climate::CLIMATE_MODE_DRY;
-          else if (m_get_cmd_resp.data.mode == 0x02) this->mode = climate::CLIMATE_MODE_FAN_ONLY;
-          else if (m_get_cmd_resp.data.mode == 0x04) this->mode = climate::CLIMATE_MODE_HEAT;
-          else if (m_get_cmd_resp.data.mode == 0x05) this->mode = climate::CLIMATE_MODE_AUTO;
-
-
-          if (m_get_cmd_resp.data.turbo) this->custom_fan_mode = esphome::to_string("Turbo");
-          else if (m_get_cmd_resp.data.mute) this->custom_fan_mode = esphome::to_string("Mute");
-          else if (m_get_cmd_resp.data.fan == 0x00) this->custom_fan_mode = esphome::to_string("Automatic");
-          else if (m_get_cmd_resp.data.fan == 0x01) this->custom_fan_mode = esphome::to_string("1");
-          else if (m_get_cmd_resp.data.fan == 0x04) this->custom_fan_mode = esphome::to_string("2");
-          else if (m_get_cmd_resp.data.fan == 0x02) this->custom_fan_mode = esphome::to_string("3");
-          else if (m_get_cmd_resp.data.fan == 0x05) this->custom_fan_mode = esphome::to_string("4");
-          else if (m_get_cmd_resp.data.fan == 0x03) this->custom_fan_mode = esphome::to_string("5");
+          if (m_get_cmd_resp.data.power == 0x00) this->set_mode(climate::CLIMATE_MODE_OFF);
+          else if (m_get_cmd_resp.data.mode == 0x01) this->set_mode(climate::CLIMATE_MODE_COOL);
+          else if (m_get_cmd_resp.data.mode == 0x03) this->set_mode(climate::CLIMATE_MODE_DRY);
+          else if (m_get_cmd_resp.data.mode == 0x02) this->set_mode(climate::CLIMATE_MODE_FAN_ONLY);
+          else if (m_get_cmd_resp.data.mode == 0x04) this->set_mode(climate::CLIMATE_MODE_HEAT);
+          else if (m_get_cmd_resp.data.mode == 0x05) this->set_mode(climate::CLIMATE_MODE_AUTO);
 
 
-          if (m_get_cmd_resp.data.hswing && m_get_cmd_resp.data.vswing) this->swing_mode = climate::CLIMATE_SWING_BOTH;
-          else if (!m_get_cmd_resp.data.hswing && !m_get_cmd_resp.data.vswing) this->swing_mode = climate::CLIMATE_SWING_OFF;
-          else if (m_get_cmd_resp.data.vswing) this->swing_mode = climate::CLIMATE_SWING_VERTICAL;
-          else if (m_get_cmd_resp.data.hswing) this->swing_mode = climate::CLIMATE_SWING_HORIZONTAL;
+          if (m_get_cmd_resp.data.turbo) this->set_custom_fan_mode(esphome::to_string("Turbo"));
+          else if (m_get_cmd_resp.data.mute) this->set_custom_fan_mode(esphome::to_string("Mute"));
+          else if (m_get_cmd_resp.data.fan == 0x00) this->set_custom_fan_mode(esphome::to_string("Automatic"));
+          else if (m_get_cmd_resp.data.fan == 0x01) this->set_custom_fan_mode(esphome::to_string("1"));
+          else if (m_get_cmd_resp.data.fan == 0x04) this->set_custom_fan_mode(esphome::to_string("2"));
+          else if (m_get_cmd_resp.data.fan == 0x02) this->set_custom_fan_mode(esphome::to_string("3"));
+          else if (m_get_cmd_resp.data.fan == 0x05) this->set_custom_fan_mode(esphome::to_string("4"));
+          else if (m_get_cmd_resp.data.fan == 0x03) this->set_custom_fan_mode(esphome::to_string("5"));
+
+
+          if (m_get_cmd_resp.data.hswing && m_get_cmd_resp.data.vswing) this->set_swing_mode(climate::CLIMATE_SWING_BOTH);
+          else if (!m_get_cmd_resp.data.hswing && !m_get_cmd_resp.data.vswing) this->set_swing_mode(climate::CLIMATE_SWING_OFF);
+          else if (m_get_cmd_resp.data.vswing) this->set_swing_mode(climate::CLIMATE_SWING_VERTICAL);
+          else if (m_get_cmd_resp.data.hswing) this->set_swing_mode(climate::CLIMATE_SWING_HORIZONTAL);
 
 
           ESP_LOGI("TCL", "fan %02X", m_get_cmd_resp.data.fan);
           ESP_LOGI("TCL", "mode %02X", m_get_cmd_resp.data.mode);
-          this->target_temperature = float(m_get_cmd_resp.data.temp + 16);
-          this->current_temperature = curr_temp;
-          this->publish_state();
+          this->set_target_temperature(float(m_get_cmd_resp.data.temp + 16));
+          this->set_current_temperature(curr_temp);
+          if (this->is_changed)
+            this->publish_state();
         }
         //publish_state(buffer);
       }
