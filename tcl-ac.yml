@@ -35,3 +35,44 @@ climate:
 
   climates:
     - name: "TCL a/c"
+      id: my_custom_climate
+
+select:
+  - platform: template
+    name: Vertical swing
+    id: vswing
+    entity_category: config
+    options:
+      - "Last position"
+      - "Fix top"
+      - "Fix upper"
+      - "Fix mid"
+      - "Fix lower"
+      - "Fix bottom"
+      - "Move full"
+      - "Move upper"
+      - "Move lower"
+    set_action:
+      then:
+        lambda: |-
+          static_cast<MyCustomClimate*>(id(my_custom_climate))->control_vertical_swing(x);
+
+  - platform: template
+    name: Horizontal swing
+    id: hswing
+    entity_category: config
+    options:
+      - "Last position"
+      - "Fix left"
+      - "Fix mid left"
+      - "Fix mid"
+      - "Fix mid right"
+      - "Fix right"
+      - "Move full"
+      - "Move left"
+      - "Move mid"
+      - "Move right"
+    set_action:
+      then:
+        lambda: |-
+          static_cast<MyCustomClimate*>(id(my_custom_climate))->control_horizontal_swing(x);
