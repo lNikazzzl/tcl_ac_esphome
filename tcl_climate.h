@@ -81,8 +81,15 @@ public:
       uint8_t byte_49;
 
       uint8_t byte_50;
-      uint8_t byte_51;
-      uint8_t byte_52;
+
+      uint8_t vswing_fix : 3;
+      uint8_t vswing_mv : 2;
+      uint8_t byte_51_bit_5_7 : 3;
+
+      uint8_t hswing_fix : 3;
+      uint8_t hswing_mv : 3;
+      uint8_t byte_52_bit_6_7 : 2;
+
       uint8_t byte_53;
       uint8_t byte_54;
       uint8_t byte_55;
@@ -159,13 +166,18 @@ public:
 
       uint8_t byte_30;
       uint8_t byte_31;
-      uint8_t byte_32;
-      uint8_t byte_33;
+      uint8_t vswing_fix : 3;
+      uint8_t vswing_mv : 2;
+      uint8_t byte_32_bit_5_7 : 3;
+
+      uint8_t hswing_fix : 3;
+      uint8_t hswing_mv : 3;
+      uint8_t byte_33_bit_6_7 : 2;
 
       uint8_t xor_sum;
     } data;
     uint8_t raw[35];
-  };
+  };  
 
   bool ready_to_send_set_cmd_flag = false;
 
@@ -195,6 +207,21 @@ public:
     if (this->swing_mode == swing_mode) return;
     this->is_changed = true;
     this->swing_mode = swing_mode;
+  }
+
+  std::string hswing_pos = "";
+  std::string vswing_pos = "";
+
+  void set_hswing_pos (const std::string &hswing_pos) {
+    if (this->hswing_pos == hswing_pos) return;
+    id(hswing).publish_state(hswing_pos);
+    this->hswing_pos = hswing_pos;
+  }
+
+  void set_vswing_pos (const std::string &vswing_pos) {
+    if (this->vswing_pos == vswing_pos) return;
+    id(vswing).publish_state(vswing_pos);
+    this->vswing_pos = vswing_pos;
   }
 
   void set_target_temperature (float target_temperature) {
@@ -256,8 +283,28 @@ public:
         break;
     }
 
-    m_set_cmd.data.vswing = get_cmd_resp->data.vswing ? 0x07 : 0x00;
-    m_set_cmd.data.hswing = get_cmd_resp->data.hswing;
+    //m_set_cmd.data.vswing = get_cmd_resp->data.vswing ? 0x07 : 0x00;
+    //m_set_cmd.data.hswing = get_cmd_resp->data.hswing;
+
+    if (get_cmd_resp->data.vswing_mv) {
+      m_set_cmd.data.vswing = 0x07;
+      m_set_cmd.data.vswing_fix = 0;
+      m_set_cmd.data.vswing_mv = get_cmd_resp->data.vswing_mv;
+    } else if (get_cmd_resp->data.vswing_fix) {
+      m_set_cmd.data.vswing = 0;
+      m_set_cmd.data.vswing_fix = get_cmd_resp->data.vswing_fix;
+      m_set_cmd.data.vswing_mv = 0;
+    }
+
+    if (get_cmd_resp->data.hswing_mv) {
+      m_set_cmd.data.hswing = 0x01;
+      m_set_cmd.data.hswing_fix = 0;
+      m_set_cmd.data.hswing_mv = get_cmd_resp->data.hswing_mv;
+    } else if (get_cmd_resp->data.hswing_fix) {
+      m_set_cmd.data.hswing = 0;
+      m_set_cmd.data.hswing_fix = get_cmd_resp->data.hswing_fix;
+      m_set_cmd.data.hswing_mv = 0;
+    }
 
     m_set_cmd.data.half_degree = 0;
 
@@ -267,6 +314,60 @@ public:
   void setup() override {
     // This will be called by App.setup()
     set_update_interval(500);
+  }
+
+
+  void control_vertical_swing(const std::string &swing_mode) {
+    // Implement the vertical swing control logic
+    ESP_LOGD("custom", "Vertical swing set to: %s", swing_mode.c_str());
+
+    get_cmd_resp_t get_cmd_resp = {0};
+    memcpy(get_cmd_resp.raw, m_get_cmd_resp.raw, sizeof(get_cmd_resp.raw));
+
+    get_cmd_resp.data.vswing_mv = 0;
+    get_cmd_resp.data.vswing_fix = 0;
+
+    if (swing_mode == "Move full") get_cmd_resp.data.vswing_mv = 0x01;
+    else if (swing_mode == "Move upper")  get_cmd_resp.data.vswing_mv = 0x02;
+    else if (swing_mode == "Move lower")  get_cmd_resp.data.vswing_mv = 0x03;
+    else if (swing_mode == "Fix top") get_cmd_resp.data.vswing_fix = 0x01;
+    else if (swing_mode == "Fix upper") get_cmd_resp.data.vswing_fix = 0x02;
+    else if (swing_mode == "Fix mid") get_cmd_resp.data.vswing_fix = 0x03;
+    else if (swing_mode == "Fix lower") get_cmd_resp.data.vswing_fix = 0x04;
+    else if (swing_mode == "Fix bottom") get_cmd_resp.data.vswing_fix = 0x05;
+
+    if (get_cmd_resp.data.vswing_mv) get_cmd_resp.data.vswing = 0x01;
+    else get_cmd_resp.data.vswing = 0;
+
+    build_set_cmd(&get_cmd_resp);
+    ready_to_send_set_cmd_flag = true;
+}
+
+  void control_horizontal_swing(const std::string &swing_mode) {
+    // Implement the vertical swing control logic
+    ESP_LOGD("custom", "Horizontal swing set to: %s", swing_mode.c_str());
+
+    get_cmd_resp_t get_cmd_resp = {0};
+    memcpy(get_cmd_resp.raw, m_get_cmd_resp.raw, sizeof(get_cmd_resp.raw));
+
+    get_cmd_resp.data.hswing_mv = 0;
+    get_cmd_resp.data.hswing_fix = 0;
+
+    if (swing_mode == "Move full") get_cmd_resp.data.hswing_mv = 0x01;
+    else if (swing_mode == "Move left") get_cmd_resp.data.hswing_mv = 0x02;
+    else if (swing_mode == "Move mid") get_cmd_resp.data.hswing_mv = 0x03;
+    else if (swing_mode == "Move right") get_cmd_resp.data.hswing_mv = 0x04;
+    else if (swing_mode == "Fix left") get_cmd_resp.data.hswing_fix = 0x01;
+    else if (swing_mode == "Fix mid left") get_cmd_resp.data.hswing_fix = 0x02;
+    else if (swing_mode == "Fix mid") get_cmd_resp.data.hswing_fix = 0x03;
+    else if (swing_mode == "Fix mid right") get_cmd_resp.data.hswing_fix = 0x04;
+    else if (swing_mode == "Fix right") get_cmd_resp.data.hswing_fix = 0x05;
+
+    if (get_cmd_resp.data.vswing_mv) get_cmd_resp.data.hswing = 0x01;
+    else  get_cmd_resp.data.hswing = 0;
+
+    build_set_cmd(&get_cmd_resp);
+    ready_to_send_set_cmd_flag = true;
   }
   
   void control(const ClimateCall &call) override {
@@ -324,7 +425,7 @@ public:
       build_set_cmd(&get_cmd_resp);
       ready_to_send_set_cmd_flag = true;
     }
-    if (call.get_swing_mode().has_value()) {
+    if (false) {//call.get_swing_mode().has_value()) {
       // User requested target temperature change
       ClimateSwingMode swing_mode = *call.get_swing_mode();
 
@@ -401,6 +502,7 @@ public:
     uint8_t req_cmd[] = {0xBB, 0x00, 0x01, 0x04, 0x02, 0x01, 0x00, 0xBD};
 
     if (ready_to_send_set_cmd_flag) {
+        ESP_LOGW("TCL", "Sending data");
         ready_to_send_set_cmd_flag = false;
         write_array(m_set_cmd.raw, sizeof(m_set_cmd.raw));
     }
@@ -496,6 +598,26 @@ public:
           else if (m_get_cmd_resp.data.vswing) this->set_swing_mode(climate::CLIMATE_SWING_VERTICAL);
           else if (m_get_cmd_resp.data.hswing) this->set_swing_mode(climate::CLIMATE_SWING_HORIZONTAL);
 
+          if (m_get_cmd_resp.data.vswing_mv == 0x01) set_vswing_pos("Move full");
+          else if (m_get_cmd_resp.data.vswing_mv == 0x02) set_vswing_pos("Move upper");
+          else if (m_get_cmd_resp.data.vswing_mv == 0x03) set_vswing_pos("Move lower");
+          else if (m_get_cmd_resp.data.vswing_fix == 0x01) set_vswing_pos("Fix top");
+          else if (m_get_cmd_resp.data.vswing_fix == 0x02) set_vswing_pos("Fix upper");
+          else if (m_get_cmd_resp.data.vswing_fix == 0x03) set_vswing_pos("Fix mid");
+          else if (m_get_cmd_resp.data.vswing_fix == 0x04) set_vswing_pos("Fix lower");
+          else if (m_get_cmd_resp.data.vswing_fix == 0x05) set_vswing_pos("Fix bottom");
+          else set_vswing_pos("Last position");
+
+          if (m_get_cmd_resp.data.hswing_mv == 0x01) set_hswing_pos("Move full");
+          else if (m_get_cmd_resp.data.hswing_mv == 0x02) set_hswing_pos("Move left");
+          else if (m_get_cmd_resp.data.hswing_mv == 0x03) set_hswing_pos("Move mid");
+          else if (m_get_cmd_resp.data.hswing_mv == 0x04) set_hswing_pos("Move right");
+          else if (m_get_cmd_resp.data.hswing_fix == 0x01) set_hswing_pos("Fix left");
+          else if (m_get_cmd_resp.data.hswing_fix == 0x02) set_hswing_pos("Fix mid left");
+          else if (m_get_cmd_resp.data.hswing_fix == 0x03) set_hswing_pos("Fix mid");
+          else if (m_get_cmd_resp.data.hswing_fix == 0x04) set_hswing_pos("Fix mid right");
+          else if (m_get_cmd_resp.data.hswing_fix == 0x05) set_hswing_pos("Fix right");
+          else set_hswing_pos("Last position");
 
           ESP_LOGI("TCL", "fan %02X", m_get_cmd_resp.data.fan);
           ESP_LOGI("TCL", "mode %02X", m_get_cmd_resp.data.mode);
