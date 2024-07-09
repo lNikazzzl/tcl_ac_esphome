@@ -11,6 +11,7 @@
 - Royal Clima rci-pf40hn
 - Lennox LI036CI-180P432
 - SunWind SW-18
+- Kesser Split 12000/BTU
 
 ### Unsuccessfully tested:
 - TCL-12chsa/tpg
