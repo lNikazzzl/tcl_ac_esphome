@@ -1,3 +1,7 @@
+# WONT BUILD WITH ESPHome 2025.3.0 - 19th March 2025 (or even earlier )
+- custom components have been removed
+- current only solution is using hacs and Legacy ESPHome addon
+
 # Integration of TCL-based air conditioners for Home Assistant
 
 ### Implemented:
