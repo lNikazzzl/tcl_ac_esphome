@@ -1,7 +1,5 @@
 esphome:
   name: tcl-ac
-  includes:
-    - tcl_climate.h
 
 esp8266:
   board: esp07
@@ -9,8 +7,10 @@ esp8266:
 external_components:
   - source:
       type: git
-      url: https://github.com/robertklep/esphome-custom-component
-    components: [ custom, custom_component ]
+      url: https://github.com/lNikazzzl/tcl_climate
+    components: [ tcl_climate ]
+#  or local
+#  - source: components
 
 wifi:
   ssid: !secret wifi_ssid
@@ -33,15 +33,10 @@ logger:
   baud_rate: 0
 
 climate:
-- platform: custom
-  lambda: |-
-    auto my_custom_climate = new MyCustomClimate(id(uart_bus));
-    App.register_component(my_custom_climate);
-    return {my_custom_climate};
-
-  climates:
-    - name: "TCL a/c"
-      id: my_custom_climate
+  - platform: tcl_climate
+    id: tcl_custom_climate
+    uart_id: uart_bus
+    name: "HAVC TCL"
 
 select:
   - platform: template
@@ -61,7 +56,7 @@ select:
     set_action:
       then:
         lambda: |-
-          static_cast<MyCustomClimate*>(id(my_custom_climate))->control_vertical_swing(x);
+            id(tcl_custom_climate).control_vertical_swing(x);
 
   - platform: template
     name: Horizontal swing
@@ -81,4 +76,4 @@ select:
     set_action:
       then:
         lambda: |-
-          static_cast<MyCustomClimate*>(id(my_custom_climate))->control_horizontal_swing(x);
+            id(tcl_custom_climate).control_horizontal_swing(x);
