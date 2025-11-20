@@ -24,12 +24,16 @@ void TCLClimate::set_current_temperature(float current_temperature) {
 }
 
 void TCLClimate::set_custom_fan_mode(const std::string &fan_mode) {
-  if (this->custom_fan_mode == fan_mode) return;
+  // Use the protected setter method instead of direct access
+  if (this->get_custom_fan_mode() != nullptr && fan_mode == this->get_custom_fan_mode()) 
+    return;
+  
   // Log the fan mode change
   ESP_LOGI("TCL", "Fan mode changed to: %s", fan_mode.c_str());
 
   this->is_changed = true;
-  this->custom_fan_mode = fan_mode;
+  // Use the protected setter
+  this->set_custom_fan_mode_(fan_mode.c_str());
 }
 
 void TCLClimate::set_mode(climate::ClimateMode mode) {
@@ -278,8 +282,10 @@ void TCLClimate::control(const climate::ClimateCall &call) {
     }
 
 
-    if (call.get_custom_fan_mode().has_value()) {
-        std::string fan_mode = *call.get_custom_fan_mode();
+    // Updated custom fan mode handling
+    const char* custom_fan_mode = call.get_custom_fan_mode();
+    if (custom_fan_mode != nullptr) {
+        std::string fan_mode(custom_fan_mode);
         ESP_LOGI("TCL", "Received fan mode control command: %s", fan_mode.c_str());
         
         get_cmd_resp.data.turbo = 0x00;
@@ -316,7 +322,7 @@ void TCLClimate::control(const climate::ClimateCall &call) {
 
 climate::ClimateTraits TCLClimate::traits() {
   auto traits = climate::ClimateTraits();
-  traits.set_supports_current_temperature(true);
+  traits.add_feature_flags(climate::CLIMATE_SUPPORTS_CURRENT_TEMPERATURE);
   traits.set_supported_modes({
     climate::CLIMATE_MODE_OFF,
     climate::CLIMATE_MODE_COOL,
@@ -426,26 +432,26 @@ void TCLClimate::loop() {
                     }
                 }
 
-                // Set fan mode
-                static const std::map<uint8_t, std::string> FAN_MODE_MAP = {
-                    {0x00, "Automatic"},
-                    {0x01, "1"},
-                    {0x04, "2"},
-                    {0x02, "3"},
-                    {0x05, "4"},
-                    {0x03, "5"}
-                };
-                
-                if (m_get_cmd_resp.data.turbo) {
-                    this->set_custom_fan_mode("Turbo");
-                } else if (m_get_cmd_resp.data.mute) {
-                    this->set_custom_fan_mode("Mute");
-                } else {
-                    auto it = FAN_MODE_MAP.find(m_get_cmd_resp.data.fan);
-                    if (it != FAN_MODE_MAP.end()) {
-                        this->set_custom_fan_mode(it->second);
-                    }
-                }
+				// Set fan mode
+				static const std::map<uint8_t, std::string> FAN_MODE_MAP = {
+					{0x00, "Automatic"},
+					{0x01, "1"},
+					{0x04, "2"},
+					{0x02, "3"},
+					{0x05, "4"},
+					{0x03, "5"}
+				};
+
+				if (m_get_cmd_resp.data.turbo) {
+					this->set_custom_fan_mode("Turbo");
+				} else if (m_get_cmd_resp.data.mute) {
+					this->set_custom_fan_mode("Mute");
+				} else {
+					auto it = FAN_MODE_MAP.find(m_get_cmd_resp.data.fan);
+					if (it != FAN_MODE_MAP.end()) {
+						this->set_custom_fan_mode(it->second);
+					}
+				}
 
                 // Set swing mode - extracted from old code
                 if (m_get_cmd_resp.data.hswing && m_get_cmd_resp.data.vswing) {
