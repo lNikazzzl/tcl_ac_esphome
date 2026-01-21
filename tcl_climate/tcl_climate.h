@@ -197,7 +197,7 @@ class TCLClimate : public climate::Climate, public uart::UARTDevice, public Poll
   set_cmd_t m_set_cmd = {0};
 
   void set_current_temperature(float current_temperature);
-  void set_custom_fan_mode(const std::string &fan_mode);
+  void set_custom_fan_mode(StringRef fan_mode);
   void set_mode(climate::ClimateMode mode);
   void set_swing_mode(climate::ClimateSwingMode swing_mode);
   void set_target_temperature(float target_temperature);
