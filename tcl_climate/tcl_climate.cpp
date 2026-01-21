@@ -23,17 +23,16 @@ void TCLClimate::set_current_temperature(float current_temperature) {
   this->current_temperature = current_temperature;
 }
 
-void TCLClimate::set_custom_fan_mode(const std::string &fan_mode) {
-  // Use the protected setter method instead of direct access
-  if (this->get_custom_fan_mode() != nullptr && fan_mode == this->get_custom_fan_mode()) 
+void TCLClimate::set_custom_fan_mode(StringRef fan_mode) {
+  StringRef current = this->get_custom_fan_mode();
+  if (!current.empty() && fan_mode == current.c_str()) 
     return;
-  
+
   // Log the fan mode change
   ESP_LOGI("TCL", "Fan mode changed to: %s", fan_mode.c_str());
-
   this->is_changed = true;
-  // Use the protected setter
-  this->set_custom_fan_mode_(fan_mode.c_str());
+
+  this->set_custom_fan_mode_(fan_mode);
 }
 
 void TCLClimate::set_mode(climate::ClimateMode mode) {
@@ -283,9 +282,9 @@ void TCLClimate::control(const climate::ClimateCall &call) {
 
 
     // Updated custom fan mode handling
-    const char* custom_fan_mode = call.get_custom_fan_mode();
-    if (custom_fan_mode != nullptr) {
-        std::string fan_mode(custom_fan_mode);
+    StringRef custom_fan_mode = call.get_custom_fan_mode();
+	if (!custom_fan_mode.empty()) {
+		std::string fan_mode(custom_fan_mode.c_str());
         ESP_LOGI("TCL", "Received fan mode control command: %s", fan_mode.c_str());
         
         get_cmd_resp.data.turbo = 0x00;
@@ -311,6 +310,7 @@ void TCLClimate::control(const climate::ClimateCall &call) {
         }
         should_build_cmd = true;
     }
+
 
     if (should_build_cmd) {
         ESP_LOGI("TCL", "Building and sending command to AC unit");
@@ -442,15 +442,22 @@ void TCLClimate::loop() {
 					{0x03, "5"}
 				};
 
+				StringRef current_fan = this->get_custom_fan_mode();
+
 				if (m_get_cmd_resp.data.turbo) {
-					this->set_custom_fan_mode("Turbo");
+				  // String literal to StringRef - use explicit construction
+				  this->set_custom_fan_mode(StringRef("Turbo"));
 				} else if (m_get_cmd_resp.data.mute) {
-					this->set_custom_fan_mode("Mute");
+				  this->set_custom_fan_mode(StringRef("Mute"));
 				} else {
-					auto it = FAN_MODE_MAP.find(m_get_cmd_resp.data.fan);
-					if (it != FAN_MODE_MAP.end()) {
-						this->set_custom_fan_mode(it->second);
+				  auto it = FAN_MODE_MAP.find(m_get_cmd_resp.data.fan);
+				  if (it != FAN_MODE_MAP.end()) {
+					StringRef current_fan = this->get_custom_fan_mode();
+					if (current_fan.empty() || current_fan != it->second) {
+					  // Convert std::string to StringRef
+					  this->set_custom_fan_mode(StringRef(it->second.c_str(), it->second.size()));
 					}
+				  }
 				}
 
                 // Set swing mode - extracted from old code
