@@ -7,8 +7,8 @@ esp8266:
 external_components:
   - source:
       type: git
-      url: https://github.com/lNikazzzl/tcl_climate
-    components: [ tcl_climate ]
+      url: https://github.com/lNikazzzl/tcl_ac_esphome
+    components: [tcl_climate]
 #  or local
 #  - source: components
 
@@ -56,7 +56,7 @@ select:
     set_action:
       then:
         lambda: |-
-            id(tcl_custom_climate).control_vertical_swing(x);
+          id(tcl_custom_climate).control_vertical_swing(x);
 
   - platform: template
     name: Horizontal swing
@@ -76,4 +76,4 @@ select:
     set_action:
       then:
         lambda: |-
-            id(tcl_custom_climate).control_horizontal_swing(x);
+          id(tcl_custom_climate).control_horizontal_swing(x);
