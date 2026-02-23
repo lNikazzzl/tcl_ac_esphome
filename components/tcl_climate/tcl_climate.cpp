@@ -15,7 +15,7 @@ static constexpr int UPDATE_INTERVAL_MS = 450;
 
 void TCLClimate::set_current_temperature(float current_temperature) {
   if (std::abs(this->current_temperature - current_temperature) < 0.1f) return;
-  
+
   // Log current temperature change
   ESP_LOGD("TCL", "Current temperature updated to: %.1f°C", current_temperature);
 
@@ -24,15 +24,16 @@ void TCLClimate::set_current_temperature(float current_temperature) {
 }
 
 void TCLClimate::set_custom_fan_mode(StringRef fan_mode) {
-  StringRef current = this->get_custom_fan_mode();
-  if (!current.empty() && fan_mode == current.c_str()) 
+  StringRef current(this->get_custom_fan_mode());
+  if (!current.empty() && fan_mode == current.c_str()) {
     return;
+  }
 
   // Log the fan mode change
   ESP_LOGI("TCL", "Fan mode changed to: %s", fan_mode.c_str());
   this->is_changed = true;
 
-  this->set_custom_fan_mode_(fan_mode);
+  this->set_custom_fan_mode_(fan_mode.c_str());
 }
 
 void TCLClimate::set_mode(climate::ClimateMode mode) {
@@ -82,7 +83,6 @@ void TCLClimate::set_vswing_pos(const std::string &vswing_pos) {
   this->vswing_pos = vswing_pos;
 }
 
-
 void TCLClimate::set_target_temperature(float target_temperature) {
   if (std::abs(this->target_temperature - target_temperature) < 0.1f) return;
   // Log temperature change
@@ -114,7 +114,7 @@ void TCLClimate::build_set_cmd(get_cmd_resp_t *get_cmd_resp) {
         0x01, // 0x04 -> 0x01 (heat)
         0x08  // 0x05 -> 0x08 (auto)
     };
-    
+
     if (get_cmd_resp->data.mode < sizeof(MODE_MAP)) {
         m_set_cmd.data.mode = MODE_MAP[get_cmd_resp->data.mode];
     }
@@ -131,7 +131,7 @@ void TCLClimate::build_set_cmd(get_cmd_resp_t *get_cmd_resp) {
         0x06, // 0x04 -> 0x06 (speed 2)
         0x07  // 0x05 -> 0x07 (speed 4)
     };
-    
+
     if (get_cmd_resp->data.fan < sizeof(FAN_MAP)) {
         m_set_cmd.data.fan = FAN_MAP[get_cmd_resp->data.fan];
     }
@@ -221,7 +221,6 @@ void TCLClimate::control_horizontal_swing(const std::string &swing_mode) {
   ready_to_send_set_cmd_flag = true;
 }
 
-
 void TCLClimate::control(const climate::ClimateCall &call) {
     get_cmd_resp_t get_cmd_resp = {0};
     memcpy(get_cmd_resp.raw, m_get_cmd_resp.raw, sizeof(get_cmd_resp.raw));
@@ -230,7 +229,7 @@ void TCLClimate::control(const climate::ClimateCall &call) {
     if (call.get_mode().has_value()) {
         climate::ClimateMode climate_mode = *call.get_mode();
         ESP_LOGI("TCL", "Received mode control command: %d", static_cast<int>(climate_mode));
-        
+
         if (climate_mode == climate::CLIMATE_MODE_OFF) {
             get_cmd_resp.data.power = 0x00;
         } else {
@@ -280,16 +279,15 @@ void TCLClimate::control(const climate::ClimateCall &call) {
         should_build_cmd = true;
     }
 
-
     // Updated custom fan mode handling
-    StringRef custom_fan_mode = call.get_custom_fan_mode();
-	if (!custom_fan_mode.empty()) {
-		std::string fan_mode(custom_fan_mode.c_str());
+    StringRef custom_fan_mode(call.get_custom_fan_mode());
+    if (!custom_fan_mode.empty()) {
+        std::string fan_mode(custom_fan_mode.c_str());
         ESP_LOGI("TCL", "Received fan mode control command: %s", fan_mode.c_str());
-        
+
         get_cmd_resp.data.turbo = 0x00;
         get_cmd_resp.data.mute = 0x00;
-        
+
         // Use map for fan mode parsing
         static const std::map<std::string, std::pair<uint8_t, uint8_t>> FAN_MODE_MAP = {
             {"Turbo",      {0x03, 0x01}},
@@ -301,7 +299,7 @@ void TCLClimate::control(const climate::ClimateCall &call) {
             {"4",          {0x05, 0x00}},
             {"5",          {0x03, 0x00}}
         };
-        
+
         auto it = FAN_MODE_MAP.find(fan_mode);
         if (it != FAN_MODE_MAP.end()) {
             get_cmd_resp.data.fan = it->second.first;
@@ -310,7 +308,6 @@ void TCLClimate::control(const climate::ClimateCall &call) {
         }
         should_build_cmd = true;
     }
-
 
     if (should_build_cmd) {
         ESP_LOGI("TCL", "Building and sending command to AC unit");
@@ -373,13 +370,13 @@ int TCLClimate::read_data_line(int readch, uint8_t *buffer, int len) {
         if (pos < len) buffer[pos++] = static_cast<uint8_t>(readch);
         if (--skipch == 0 && !wait_len) return pos;
     }
-    
+
     return -1;
 }
 
 bool TCLClimate::is_valid_xor(uint8_t *buffer, int len) {
     if (len < 1) return false;
-    
+
     uint8_t xor_byte = 0;
     for (int i = 0; i < len - 1; i++) {
         xor_byte ^= buffer[i];
@@ -389,28 +386,28 @@ bool TCLClimate::is_valid_xor(uint8_t *buffer, int len) {
 
 void TCLClimate::print_hex_str(uint8_t *buffer, int len) {
     if (len <= 0) return;
-    
+
     char str[MAX_LINE_LENGTH * 3] = {0};
     char *pstr = str;
-    
+
     for (int i = 0; i < len && (pstr - str) < sizeof(str) - 3; i++) {
         pstr += sprintf(pstr, "%02X ", buffer[i]);
     }
-    
+
     ESP_LOGD("TCL", "Received: %s", str);
 }
 
 void TCLClimate::loop() {
     static uint8_t buffer[MAX_LINE_LENGTH];
-    
+
     while (available()) {
         int len = read_data_line(read(), buffer, MAX_LINE_LENGTH);
         if (len == sizeof(m_get_cmd_resp) && buffer[3] == 0x04) {
             memcpy(m_get_cmd_resp.raw, buffer, len);
-            
+
             if (is_valid_xor(buffer, len)) {
                 print_hex_str(buffer, len);
-                
+
                 // Calculate current temperature
                 float curr_temp = ((static_cast<uint16_t>(buffer[17] << 8) | buffer[18]) / 374.0f - 32.0f) / 1.8f;
                 this->is_changed = false;
@@ -432,33 +429,33 @@ void TCLClimate::loop() {
                     }
                 }
 
-				// Set fan mode
-				static const std::map<uint8_t, std::string> FAN_MODE_MAP = {
-					{0x00, "Automatic"},
-					{0x01, "1"},
-					{0x04, "2"},
-					{0x02, "3"},
-					{0x05, "4"},
-					{0x03, "5"}
-				};
+                // Set fan mode
+                static const std::map<uint8_t, std::string> FAN_MODE_MAP = {
+                    {0x00, "Automatic"},
+                    {0x01, "1"},
+                    {0x04, "2"},
+                    {0x02, "3"},
+                    {0x05, "4"},
+                    {0x03, "5"}
+                };
 
-				StringRef current_fan = this->get_custom_fan_mode();
+                StringRef current_fan(StringRef(this->get_custom_fan_mode()));
 
-				if (m_get_cmd_resp.data.turbo) {
-				  // String literal to StringRef - use explicit construction
-				  this->set_custom_fan_mode(StringRef("Turbo"));
-				} else if (m_get_cmd_resp.data.mute) {
-				  this->set_custom_fan_mode(StringRef("Mute"));
-				} else {
-				  auto it = FAN_MODE_MAP.find(m_get_cmd_resp.data.fan);
-				  if (it != FAN_MODE_MAP.end()) {
-					StringRef current_fan = this->get_custom_fan_mode();
-					if (current_fan.empty() || current_fan != it->second) {
-					  // Convert std::string to StringRef
-					  this->set_custom_fan_mode(StringRef(it->second.c_str(), it->second.size()));
-					}
-				  }
-				}
+                if (m_get_cmd_resp.data.turbo) {
+                  // String literal to StringRef - use explicit construction
+                  this->set_custom_fan_mode(StringRef("Turbo"));
+                } else if (m_get_cmd_resp.data.mute) {
+                  this->set_custom_fan_mode(StringRef("Mute"));
+                } else {
+                  auto it = FAN_MODE_MAP.find(m_get_cmd_resp.data.fan);
+                  if (it != FAN_MODE_MAP.end()) {
+                    StringRef current_fan(StringRef(this->get_custom_fan_mode()));
+                    if (current_fan.empty() || current_fan != it->second) {
+                      // Convert std::string to StringRef
+                      this->set_custom_fan_mode(StringRef(it->second.c_str(), it->second.size()));
+                    }
+                  }
+                }
 
                 // Set swing mode - extracted from old code
                 if (m_get_cmd_resp.data.hswing && m_get_cmd_resp.data.vswing) {
@@ -495,7 +492,7 @@ void TCLClimate::loop() {
 
                 this->set_target_temperature(static_cast<float>(m_get_cmd_resp.data.temp + 16));
                 this->set_current_temperature(curr_temp);
-                
+
                 if (this->is_changed) {
                     this->publish_state();
                 }
