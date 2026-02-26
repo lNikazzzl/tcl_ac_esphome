@@ -22,4 +22,5 @@ The [original WiFi-Module](https://github.com/user-attachments/assets/f1888a35-b
 The wired UART for the connection to the AC's mainboard uses tx_pin: GPIO15 / rx_pin: GPIO13
 
 ### Donation: 
-- [ЮMoney](https://yoomoney.ru/fundraise/XBIABgGlKEA.230703)
+- kaspi kz (outside Russia) 4400430344051161
+- sber (Russia) 2202205034977568
