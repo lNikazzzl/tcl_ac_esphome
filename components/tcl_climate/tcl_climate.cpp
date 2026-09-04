@@ -99,8 +99,8 @@ void TCLClimate::build_set_cmd(get_cmd_resp_t *get_cmd_resp) {
     m_set_cmd.data.power = get_cmd_resp->data.power;
     m_set_cmd.data.off_timer_en = 0;
     m_set_cmd.data.on_timer_en = 0;
-    m_set_cmd.data.beep = 1;
-    m_set_cmd.data.disp = 1;
+    m_set_cmd.data.beep = beep_on ? 1 : 0;
+    m_set_cmd.data.disp = display_on ? 1 : 0;
     m_set_cmd.data.eco = 0;
     m_set_cmd.data.turbo = get_cmd_resp->data.turbo;
     m_set_cmd.data.mute = get_cmd_resp->data.mute;
@@ -108,9 +108,9 @@ void TCLClimate::build_set_cmd(get_cmd_resp_t *get_cmd_resp) {
     // Mode mapping using lookup table
     static constexpr uint8_t MODE_MAP[] = {
         0x00, // 0x00 - unused
-        0x03, // 0x01 -> 0x03
-        0x02, // 0x02 -> 0x02 (fan only)
-        0x07, // 0x03 -> 0x07 (dry)
+        0x03, // 0x01 -> 0x03 (cool)
+        0x07, // 0x02 -> 0x07 (fan only)
+        0x02, // 0x03 -> 0x02 (dry)
         0x01, // 0x04 -> 0x01 (heat)
         0x08  // 0x05 -> 0x08 (auto)
     };

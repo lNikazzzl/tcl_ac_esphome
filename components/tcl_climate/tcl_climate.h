@@ -4,6 +4,7 @@
 #include "esphome/core/automation.h"
 #include "esphome/components/uart/uart.h"
 #include "esphome/components/climate/climate.h"
+#include "esphome/components/switch/switch.h"
 
 namespace esphome {
 namespace tcl_climate {
@@ -17,6 +18,10 @@ class TCLClimate : public climate::Climate, public uart::UARTDevice, public Poll
   // Swing position strings
   std::string hswing_pos = "";
   std::string vswing_pos = "";
+
+  // Display / beep control state
+  bool display_on = true;
+  bool beep_on = true;
 
   union get_cmd_resp_t {
     struct {
@@ -208,6 +213,22 @@ class TCLClimate : public climate::Climate, public uart::UARTDevice, public Poll
   void control_vertical_swing(const std::string &swing_mode);
   void control_horizontal_swing(const std::string &swing_mode);
 
+  // Display / beep control — updates state and resends the current command
+  void set_display(bool on) {
+    display_on = on;
+    get_cmd_resp_t get_cmd_resp = {0};
+    memcpy(get_cmd_resp.raw, m_get_cmd_resp.raw, sizeof(get_cmd_resp.raw));
+    build_set_cmd(&get_cmd_resp);
+    ready_to_send_set_cmd_flag = true;
+  }
+  void set_beep(bool on) {
+    beep_on = on;
+    get_cmd_resp_t get_cmd_resp = {0};
+    memcpy(get_cmd_resp.raw, m_get_cmd_resp.raw, sizeof(get_cmd_resp.raw));
+    build_set_cmd(&get_cmd_resp);
+    ready_to_send_set_cmd_flag = true;
+  }
+
   void build_set_cmd(get_cmd_resp_t *get_cmd_resp);
 
   void setup() override;
@@ -221,6 +242,28 @@ class TCLClimate : public climate::Climate, public uart::UARTDevice, public Poll
   int read_data_line(int readch, uint8_t *buffer, int len);
   bool is_valid_xor(uint8_t *buffer, int len);
   void print_hex_str(uint8_t *buffer, int len);
+};
+
+class TCLDisplaySwitch : public switch_::Switch, public Component {
+ public:
+  void set_parent(TCLClimate *parent) { parent_ = parent; }
+  void write_state(bool state) override {
+    parent_->set_display(state);
+    this->publish_state(state);
+  }
+ protected:
+  TCLClimate *parent_;
+};
+
+class TCLBeepSwitch : public switch_::Switch, public Component {
+ public:
+  void set_parent(TCLClimate *parent) { parent_ = parent; }
+  void write_state(bool state) override {
+    parent_->set_beep(state);
+    this->publish_state(state);
+  }
+ protected:
+  TCLClimate *parent_;
 };
 
 }  // namespace tcl_climate
