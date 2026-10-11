@@ -190,7 +190,29 @@ class TCLClimate : public climate::Climate, public uart::UARTDevice, public Poll
     uint8_t raw[35];
   };
 
-  bool ready_to_send_set_cmd_flag = false;
+  // Debounced / verified command delivery.
+  // UI edits are merged into pending_cmd_resp_ and sent as one command once the
+  // user has been idle for CONTROL_DEBOUNCE_MS. The AC's next status frames are
+  // then compared with the request and the command is resent (up to MAX_RETRIES)
+  // if the AC did not apply it.
+  static constexpr uint32_t CONTROL_DEBOUNCE_MS = 500;
+  static constexpr uint32_t VERIFY_DELAY_MS = 900;
+  static constexpr uint8_t MAX_RETRIES = 3;
+
+  get_cmd_resp_t pending_cmd_resp_{};
+  bool desired_valid_ = false;
+  bool pending_set_cmd_ = false;
+  bool awaiting_verify_ = false;
+  uint8_t retries_ = 0;
+  uint8_t skip_polls_ = 0;
+  uint32_t last_control_ms_ = 0;
+  uint32_t last_send_ms_ = 0;
+
+  void ensure_desired_();
+  get_cmd_resp_t *desired_();
+  void schedule_set_cmd_();
+  bool matches_desired_(const get_cmd_resp_t &st);
+  void send_desired_(uint32_t now);
 
   uint8_t set_cmd_base[35] = {0xBB, 0x00, 0x01, 0x03, 0x1D, 0x00, 0x00, 0x64, 0x03, 0xF3, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
   get_cmd_resp_t m_get_cmd_resp = {0};
