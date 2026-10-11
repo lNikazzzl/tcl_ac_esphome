@@ -30,7 +30,7 @@ uart:
 
 logger:
   level: VERBOSE
-  baud_rate: 0
+  baud_rate: 0  # required: UART0 (GPIO1/GPIO3) is shared with the AC, serial logs corrupt AC commands
 
 climate:
   - platform: tcl_climate
