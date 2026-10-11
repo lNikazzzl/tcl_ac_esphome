@@ -22,6 +22,14 @@
 - Danby DAS180EAQHWDB
 - Royal Clima RCI-GLF07HN
 - Royal Clima 12HN8
+- Della mini-split (TCL rebrand; ESP8266 D1 mini, UART 9600 8E1)
+
+### Disable the serial logger
+On ESP8266 the AC is connected to UART0 (GPIO1/GPIO3), which is the same UART the ESPHome logger writes to by default. Log output on that UART gets mixed into the AC link and corrupts commands (in testing about half of the commands were dropped). Turn the serial logger off; logs still work over Wi-Fi / the API:
+```
+logger:
+  baud_rate: 0
+```
 
 ### Many users recommend using firmware based on a different UART, for example:
 If you are having trouble where the air conditioner turns on but does not respond to other commands, use this.
